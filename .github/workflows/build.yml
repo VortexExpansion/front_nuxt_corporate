@@ -1,31 +1,26 @@
 name: Build and deploy to Kuroco front
-
 on:
   push:
     branches:
       - main
+      - fix-yaml
   issue_comment:
     types: [created, edited]
   workflow_dispatch:
-
-env:
-  BRANCH: main
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
+  
 jobs:
-  # for Pull Request (exclude merged)
   pullreq_build:
     name: Build(pullreq)
-    if: (github.repository == 'diverta/front_nuxt_corporate' && github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/kuroco stage') && github.event.issue.pull_request != null)
+    if: (github.repository == 'VortexExpansion/front_nuxt_corporate')
     runs-on: ubuntu-latest
     steps:
       - name: "Get branch name and sha"
         id: get_branch
         run: |
-          PR=$(curl -H "X-Kuroco-Auth: token abd1c816e196edb0c626d44ccff524f5" https://dev-nuxt-corporate.g.kuroco.app/direct/menu/github/?pr=${{ github.event.issue.pull_request.url }})
+          PR=$(curl -H "X-Kuroco-Auth: token 8d90dc3cca20f1c207ce5e4c5d357742" https://sushipedia.g.kuroco.app/direct/menu/github/?pr=${{ github.event.issue.pull_request.url }})
           echo "branch=$(echo $PR | jq -r '.ref')" >> $GITHUB_OUTPUT
           echo "sha=$(echo $PR | jq -r '.sha')" >> $GITHUB_OUTPUT
       - name: Checkout Repo
@@ -35,7 +30,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18.x'
+            node-version: '18.x'
       - name: CI Cache
         uses: actions/cache@v3
         id: node_modules_cache_id
@@ -45,13 +40,14 @@ jobs:
           path: '**/node_modules'
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.ref_name }}-${{ hashFiles('**/package-lock.json') }}
       - name: Install dependencies
-        if: ${{ steps.node_modules_cache_id.outputs.cache-hit != 'true' }}
+        if: ${{ steps.node_modules_cache_id.outputs.cache-hit != 'true' }}      
         run: npm ci
-
+      - name: Build
+        run: npm run build
       - name: Generate
         run: npm run generate
-      - name: Zip artifact for upload
-        run: cd ./.output/public && zip ../../dist.zip . -r
+        # - name: Zip artifact for upload
+        #  run: cd ./.output/public && zip ../../dist.zip . -r
       - name: Archive Production Artifact
         uses: actions/upload-artifact@v3
         with:
@@ -63,14 +59,14 @@ jobs:
       - name: Webhook
         uses: diverta/workflow-webhook@v2
         env:
-          webhook_url: "https://dev-nuxt-corporate.g.kuroco.app/direct/menu/github/"
-          webhook_secret: "abd1c816e196edb0c626d44ccff524f5"
-          data: '{"single_zip":"1","domain":"dev-nuxt-corporate.g.kuroco-front.app","pr":"${{ github.event.issue.pull_request.url }}",  "repository":"${{ github.repository }}", "run_id":"${{ github.run_id }}", "hash":"${{ steps.get_branch.outputs.sha }}"}'
+          webhook_url: "https://sushipedia.g.kuroco.app/direct/menu/github/"
+          webhook_secret: "8d90dc3cca20f1c207ce5e4c5d357742"
+          data: '{"single_zip":"1","domain":"sushipedia.g.kuroco-front.app","pr":"${{ github.event.issue.pull_request.url }}",  "repository":"${{ github.repository }}", "run_id":"${{ github.run_id }}", "hash":"${{ steps.get_branch.outputs.sha }}"}'
           
   #for Push
   pushed_build:
     name: Build(pushed)
-    if: (github.repository == 'diverta/front_nuxt_corporate' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
+    if: (github.repository == 'VortexExpansion/front_nuxt_corporate')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -86,15 +82,15 @@ jobs:
           cache-name: cache-node-modules
         with:
           path: '**/node_modules'
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.ref_name }}-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.ref_name }}-${{ hashFiles('**/package-lock.json') }}          
       - name: Install dependencies
-        if: ${{ steps.node_modules_cache_id.outputs.cache-hit != 'true' }}
         run: npm ci
-
+      - name: Build
+        run: npm run build
       - name: Generate
         run: npm run generate
-      - name: Zip artifact for upload
-        run: cd ./.output/public && zip ../../dist.zip . -r
+        # - name: Zip artifact for upload
+        #  run: cd ./.output/public && zip ../../dist.zip . -r
       - name: Archive Production Artifact
         uses: actions/upload-artifact@v3
         with:
@@ -104,6 +100,7 @@ jobs:
       - name: Webhook
         uses: diverta/workflow-webhook@v2
         env:
-          webhook_url: "https://dev-nuxt-corporate.g.kuroco.app/direct/menu/github/"
-          webhook_secret: "abd1c816e196edb0c626d44ccff524f5"
-          data: '{"single_zip":"1","domain":"dev-nuxt-corporate.g.kuroco-front.app", "repository":"${{ github.repository }}", "run_id":"${{ github.run_id }}", "hash":"${{ github.sha }}"}'
+          webhook_url: "https://sushipedia.g.kuroco.app/direct/menu/github/"
+          webhook_secret: "8d90dc3cca20f1c207ce5e4c5d357742"
+          data: '{"single_zip":"1","domain":"sushipedia.g.kuroco-front.app", "repository":"${{ github.repository }}", "run_id":"${{ github.run_id }}", "hash":"${{ github.sha }}"}'
+  
